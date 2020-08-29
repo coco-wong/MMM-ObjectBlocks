@@ -6,6 +6,7 @@
  */
 
 var NodeHelper = require("node_helper");
+var WebSocket = require("ws");
 
 module.exports = NodeHelper.create({
 
@@ -18,30 +19,38 @@ module.exports = NodeHelper.create({
 	 * argument payload mixed - The payload of the notification.
 	 */
 	socketNotificationReceived: function(notification, payload) {
-		if (notification === "{{MODULE_NAME}}-NOTIFICATION_TEST") {
-			console.log("Working notification system. Notification:", notification, "payload: ", payload);
-			// Send notification
-			this.sendNotificationTest(this.anotherFunction()); //Is possible send objects :)
+		if (notification === "INIT_OB") {
+			console.log("MMM ObjectBlocks Notification:", notification, "payload: ", payload);
+			//let websocket_URL = payload;
+			let websockets = payload;
+
+			for(var i = 0; i < websockets.length; i++) {
+				let websocket = websockets[i];
+
+				let ws = new WebSocket(websocket.websocket_URL);
+
+				//onopen: called when connected
+				ws.onopen = function() {
+					console.log("Websocket connected");
+				};
+
+				let self = this;
+
+				//onmessage: called when message arrive
+				ws.onmessage = function(event) {
+					let message = event.data;
+					let data =JSON.parse(message);
+					console.log("data: " + data.value);
+					console.log("url: " + ws.url + " value: " + data.value);
+					self.sendSocketNotification("DATA_RECV", 
+						{url: ws.url, value: data.value});
+				};
+
+				// onclose: called when disconnected
+				ws.onclose = function() {
+					console.log("Websocket disconnected");
+				};
+			}
 		}
 	},
-
-	// Example function send notification test
-	sendNotificationTest: function(payload) {
-		this.sendSocketNotification("{{MODULE_NAME}}-NOTIFICATION_TEST", payload);
-	},
-
-	// this you can create extra routes for your module
-	extraRoutes: function() {
-		var self = this;
-		this.expressApp.get("/{{MODULE_NAME}}/extra_route", function(req, res) {
-			// call another function
-			values = self.anotherFunction();
-			res.send(values);
-		});
-	},
-
-	// Test another function
-	anotherFunction: function() {
-		return {date: new Date()};
-	}
 });
